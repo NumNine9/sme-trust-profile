@@ -16,53 +16,7 @@ The one non-negotiable split is between **synchronous request handling** and **l
 
 ### Architecture Diagram
 
-```text
-┌─────────────────┐
-│   React PWA     │  SME / Buyer / YES views
-│  (mobile-first) │  device-side compression, resumable uploads
-└────────┬────────┘
-         │ HTTPS
-┌────────▼─────────────────────────────────────────────────┐
-│                  FastAPI API (sync)                      │
-│  ┌──────────┬──────────┬──────────┬──────────┬────────┐  │
-│  │  Intake  │ Profile  │ Consent  │ Matching │Feedback│  │
-│  └──────────┴──────────┴──────────┴──────────┴────────┘  │
-└────┬───────────────────────────────────────┬─────────────┘
-     │ enqueue                               │ read/write
-┌────▼──────────────┐              ┌─────────▼──────────────┐
-│  Job Queue        │              │  PostgreSQL            │
-│  (Postgres-backed │              │  + pgvector            │
-│   or Redis)       │              │  row-level security    │
-└────┬──────────────┘              │  append-only audit     │
-     │ dequeue                     └─────────▲──────────────┘
-┌────▼──────────────────────────────────────┐│
-│              Worker (async)                ││
-│  ┌─────────┬─────────┬─────────┬────────┐ ││
-│  │Classify │  OCR    │ Extract │Validate│ ││
-│  ├─────────┼─────────┼─────────┼────────┤ ││
-│  │Financial│Readiness│ Embed   │ Flag   │ ││
-│  └─────────┴─────────┴─────────┴────────┘ ││
-└────┬───────────────────────────┬──────────┘│
-     │                           │            │
-┌────▼──────────────┐   ┌────────▼─────────┐ │
-│  AI Gateway       │   │  Azure Blob      │ │
-│  (Adapter+Strategy│   │  Storage         │ │
-│   + fallback)     │   │  (source docs,   │ │
-│  ┌──────────────┐ │   │   short-lived    │ │
-│  │Doc Intell.   │ │   │   SAS links)     │ │
-│  │Gemini/Mistral│ │   └──────────────────┘ │
-│  │Voyage/TEI-BGE│ │                        │
-│  └──────────────┘ │                        │
-└───────────────────┘                        │
-                                             │
-                    ┌────────────────────────┘
-                    │
-              ┌─────▼──────────────┐
-              │  Human Review Queue│
-              │  (Postgres table + │
-              │   reviewer view)   │
-              └────────────────────┘
-```
+[diagram 1]
 
 ### Component Responsibilities
 
@@ -79,15 +33,7 @@ The one non-negotiable split is between **synchronous request handling** and **l
 
 ### Deployment Topology (MVP / Pilot)
 
-```text
-Azure South Africa North
-├── Container App: FastAPI API          (1–2 instances)
-├── Container App: Worker               (1 instance, scale on queue depth)
-├── Container App: TEI (bge-large, CPU) (optional, self-hosted embeddings)
-├── Azure Database for PostgreSQL Flexible Server (+ pgvector)
-├── Azure Blob Storage
-└── Azure Key Vault  (provider keys, DB credentials)
-```
+[diagram 2]
 
 - Single region satisfies data-residency requirements.
 - Secrets injected from Key Vault as environment variables—never in code or frontend.
