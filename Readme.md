@@ -1,169 +1,110 @@
-# Architecture & Design Patterns
+<a href="https://demo-nextjs-with-supabase.vercel.app/">
+  <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
+  <h1 align="center">Next.js and Supabase Starter Kit</h1>
+</a>
 
-This section describes the architecture and design patterns selected for the SME Verification and Opportunity Matching platform. 
+<p align="center">
+ The fastest way to build apps with Next.js and Supabase
+</p>
 
----
+<p align="center">
+  <a href="#features"><strong>Features</strong></a> ·
+  <a href="#demo"><strong>Demo</strong></a> ·
+  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
+  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
+  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
+  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
+</p>
+<br/>
 
-## 1. Architectural Style: Modular Monolith + Async Worker
+## Features
 
-### Rationale
+- Works across the entire [Next.js](https://nextjs.org) stack
+  - App Router
+  - Pages Router
+  - Proxy
+  - Client
+  - Server
+  - It just works!
+- supabase-ssr. A package to configure Supabase Auth to use cookies
+- Password-based authentication block installed via the [Supabase UI Library](https://supabase.com/ui/docs/nextjs/password-based-auth)
+- Styling with [Tailwind CSS](https://tailwindcss.com)
+- Components with [shadcn/ui](https://ui.shadcn.com/)
+- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
+  - Environment variables automatically assigned to Vercel project
 
-The platform has clearly separable domains (intake, extraction, validation, readiness, consent, matching, feedback) but a **single delivery team**, **modest expected traffic**, and a **hard timeline**. A microservices architecture would introduce operational overhead—service discovery, network failure modes, distributed tracing, multiple deploy pipelines—without solving any problem the project currently has.
+## Demo
 
-A **modular monolith** keeps one deployable codebase with strict internal module boundaries, so any module can later be extracted into a service **if and only if** real usage proves the need.
+You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
 
-The one non-negotiable split is between **synchronous request handling** and **long-running document processing**. OCR, extraction, validation, and embedding take 10–90 seconds and must never block an HTTP request. This is handled by an **async worker process** running the same codebase.
+## Deploy to Vercel
 
-### Architecture Diagram
+Vercel deployment will guide you through creating a Supabase account and project.
 
-```text
-┌─────────────────┐
-│   React PWA     │  SME / Buyer / YES views
-│  (mobile-first) │  device-side compression, resumable uploads
-└────────┬────────┘
-         │ HTTPS
-┌────────▼─────────────────────────────────────────────────┐
-│                  FastAPI API (sync)                      │
-│  ┌──────────┬──────────┬──────────┬──────────┬────────┐  │
-│  │  Intake  │ Profile  │ Consent  │ Matching │Feedback│  │
-│  └──────────┴──────────┴──────────┴──────────┴────────┘  │
-└────┬───────────────────────────────────────┬─────────────┘
-     │ enqueue                               │ read/write
-┌────▼──────────────┐              ┌─────────▼──────────────┐
-│  Job Queue        │              │  PostgreSQL            │
-│  (Postgres-backed │              │  + pgvector            │
-│   or Redis)       │              │  row-level security    │
-└────┬──────────────┘              │  append-only audit     │
-     │ dequeue                     └─────────▲──────────────┘
-┌────▼──────────────────────────────────────┐│
-│              Worker (async)                ││
-│  ┌─────────┬─────────┬─────────┬────────┐ ││
-│  │Classify │  OCR    │ Extract │Validate│ ││
-│  ├─────────┼─────────┼─────────┼────────┤ ││
-│  │Financial│Readiness│ Embed   │ Flag   │ ││
-│  └─────────┴─────────┴─────────┴────────┘ ││
-└────┬───────────────────────────┬──────────┘│
-     │                           │            │
-┌────▼──────────────┐   ┌────────▼─────────┐ │
-│  AI Gateway       │   │  Azure Blob      │ │
-│  (Adapter+Strategy│   │  Storage         │ │
-│   + fallback)     │   │  (source docs,   │ │
-│  ┌──────────────┐ │   │   short-lived    │ │
-│  │Doc Intell.   │ │   │   SAS links)     │ │
-│  │Gemini/Mistral│ │   └──────────────────┘ │
-│  │Voyage/TEI-BGE│ │                        │
-│  └──────────────┘ │                        │
-└───────────────────┘                        │
-                                             │
-                    ┌────────────────────────┘
-                    │
-              ┌─────▼──────────────┐
-              │  Human Review Queue│
-              │  (Postgres table + │
-              │   reviewer view)   │
-              └────────────────────┘
+After installation of the Supabase integration, all relevant environment variables will be assigned to the project so the deployment is fully functioning.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&project-name=nextjs-with-supabase&repository-name=nextjs-with-supabase&demo-title=nextjs-with-supabase&demo-description=This+starter+configures+Supabase+Auth+to+use+cookies%2C+making+the+user%27s+session+available+throughout+the+entire+Next.js+app+-+Client+Components%2C+Server+Components%2C+Route+Handlers%2C+Server+Actions+and+Middleware.&demo-url=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2F&external-id=https%3A%2F%2Fgithub.com%2Fvercel%2Fnext.js%2Ftree%2Fcanary%2Fexamples%2Fwith-supabase&demo-image=https%3A%2F%2Fdemo-nextjs-with-supabase.vercel.app%2Fopengraph-image.png)
+
+The above will also clone the Starter kit to your GitHub, you can clone that locally and develop locally.
+
+If you wish to just develop locally and not deploy to Vercel, [follow the steps below](#clone-and-run-locally).
+
+## Clone and run locally
+
+1. You'll first need a Supabase project which can be made [via the Supabase dashboard](https://database.new)
+
+2. Create a Next.js app using the Supabase Starter template npx command
+
+   ```bash
+   npx create-next-app --example with-supabase with-supabase-app
+   ```
+
+   ```bash
+   yarn create next-app --example with-supabase with-supabase-app
+   ```
+
+   ```bash
+   pnpm create next-app --example with-supabase with-supabase-app
+   ```
+
+3. Use `cd` to change into the app's directory
+
+   ```bash
+   cd with-supabase-app
+   ```
+
+4. Rename `.env.example` to `.env.local` and update the following:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=[INSERT SUPABASE PROJECT URL]
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=[INSERT SUPABASE PROJECT API PUBLISHABLE OR ANON KEY]
 ```
 
-### Component Responsibilities
+> [!NOTE]
+> This example uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, which refers to Supabase's new **publishable** key format.
+> Both legacy **anon** keys and new **publishable** keys can be used with this variable name during the transition period. Supabase's dashboard may show `NEXT_PUBLIC_SUPABASE_ANON_KEY`; its value can be used in this example.
+> See the [full announcement](https://github.com/orgs/supabase/discussions/29260) for more information.
 
-| Component | Responsibility |
-|---|---|
-| **React PWA** | SME, buyer, YES views; mobile-first uploads; consent UI; explained shortlists |
-| **FastAPI API (sync)** | Auth, profile reads, consent grants, shortlist views, reviewer actions |
-| **Worker (async)** | OCR, classification, extraction, validation, financial calc, embedding, readiness generation, flagging |
-| **AI Gateway** | Single internal interface for all AI calls; routing; fallback; redaction; audit |
-| **PostgreSQL + pgvector** | Profiles, policies, decisions, consent, audit, embeddings |
-| **Azure Blob Storage** | Source documents, encrypted at rest, short-lived links |
-| **Human Review Queue** | Low-confidence and flagged items; reviewer confirms verification |
-| **Job Queue** | Decouples API from long-running processing |
+Both `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` can be found in [your Supabase project's API settings](https://supabase.com/dashboard/project/_?showConnect=true)
 
-### Deployment Topology (MVP / Pilot)
+5. You can now run the Next.js local development server:
 
-```text
-Azure South Africa North
-├── Container App: FastAPI API          (1–2 instances)
-├── Container App: Worker               (1 instance, scale on queue depth)
-├── Container App: TEI (bge-large, CPU) (optional, self-hosted embeddings)
-├── Azure Database for PostgreSQL Flexible Server (+ pgvector)
-├── Azure Blob Storage
-└── Azure Key Vault  (provider keys, DB credentials)
-```
+   ```bash
+   npm run dev
+   ```
 
-- Single region satisfies data-residency requirements.
-- Secrets injected from Key Vault as environment variables—never in code or frontend.
-- One resource group for the pilot; add staging only when a second organisation is onboarded.
-- Self-hosted TEI on CPU is sufficient for MVP; migrate to GPU or hosted embedding API only when matching latency becomes user-visible.
+   The starter kit should now be running on [localhost:3000](http://localhost:3000/).
 
----
+6. This template comes with the default shadcn/ui style initialized. If you instead want other ui.shadcn styles, delete `components.json` and [re-install shadcn/ui](https://ui.shadcn.com/docs/installation/next)
 
-## 2. Design Patterns
+> Check out [the docs for Local Development](https://supabase.com/docs/guides/getting-started/local-development) to also run Supabase locally.
 
-The patterns below are selected because each one directly addresses a stated requirement. Patterns not listed (CQRS, event sourcing, saga orchestration, service mesh) were deliberately rejected as unnecessary complexity at this stage.
+## Feedback and issues
 
-| Pattern | Where applied | Why |
-|---|---|---|
-| **Adapter** | AI Gateway: one adapter per provider (Azure Document Intelligence, Gemini, Mistral, Voyage, TEI/BGE) | Enables provider swap and fallback without touching business logic |
-| **Strategy** | Model routing: choose model per task, configurable per environment | Encapsulates "which model for which task"; supports primary + fallback |
-| **Pipeline / Chain of Responsibility** | Document processing: classify → OCR → extract → validate → calculate → embed → readiness → flag | Each step is small, testable, retryable; failures isolated |
-| **Repository** | Data access for profiles, consent, decisions, audit | Keeps SQL out of business logic; enforces row-level security and consistent audit writes |
-| **Command** | Human review actions: approve, correct, verify, dispute, resolve | Every reviewer action becomes a logged, replayable command |
-| **Policy / Configuration as Data** | Opportunity requirements, AirStudent credit policy, funder rules, buyer criteria | Corporate requirements configurable per organisation without code changes |
-| **Transactional Outbox (lightweight)** | Writing audit and consent records in the same transaction as a decision | Guarantees no decision is recorded without its audit entry; no message broker needed |
-| **Feature Flags (simple)** | Toggle AI provider per task, per environment | Demo with one provider, pilot with another, no branching code |
-| **Explainable Recommendation** | Readiness assessment, match reasons, improvement actions | AI output cites profile fields only; recommendations traced to evidence |
-| **Redaction Gateway** | Pre-processing before every model call | Personal identifiers masked before model calls where extraction allows |
+Please file feedback and issues over on the [Supabase GitHub org](https://github.com/supabase/supabase/issues/new/choose).
 
-### AI and Deterministic Logic Separation
+## More Supabase examples
 
-A core architectural principle is that **AI and deterministic logic never overlap in responsibility**:
-
-- **AI** performs: OCR, classification, structured extraction, semantic matching, plain-language explanation drafting.
-- **Deterministic rules** perform: format validation, expiry checks, cross-document consistency, duplicate detection, financial calculations, eligibility screening.
-- **Humans** perform: verification of flagged inconsistencies, final shortlist approval, final credit decisions, dispute resolution.
-
-The AI Gateway is a **backend-only module**. No AI provider is ever exposed to the frontend or the user directly.
-
----
-
-## 3. Why This Architecture Fits the Requirements
-
-| Requirement group | How the architecture satisfies it |
-|---|---|
-| **SME document intake** | PWA handles compression and resumable uploads; API enqueues documents immediately so the user is never blocked |
-| **AI extraction, validation, review** | Pipeline pattern isolates each step; low-confidence output routes to human review queue via a logged command |
-| **Deterministic financial capacity** | Runs as a versioned, unit-tested Python module inside the worker—no LLM touches the arithmetic |
-| **Explained readiness and SME guidance** | Readiness generation is a discrete pipeline step whose output is validated against the profile schema before reaching the UI |
-| **Consent, reuse, data governance** | Repository pattern enforces row-level security; consent checks run in API before any profile read; audit is append-only |
-| **Opportunity intake and integration** | CSV, web form, and upload ingestion share the same policy ingestion module; phase-2 API and email ingestion plug in without schema changes |
-| **Matching and human decision-making** | Policy-as-data holds each organisation's rules; hard rules run before semantic matching; recommendations generated but final decisions require an explicit human command |
-| **Feedback, disputes, YES insights** | Command pattern logs every feedback and dispute action; YES dashboard reads aggregated views only, with minimum group sizes enforced in the repository layer |
-| **Future repayment signal** | Modelled as an additional evidence source flowing through the same profile and consent layers—no architectural change required |
-| **Hackathon demonstration** | Full pipeline runs on a single Container App + worker + Postgres + Blob Storage, deployable in a day and demoable in 90 seconds |
-| **Mobile-first multi-view product** | One PWA with role-based routes; one backend serving all three views |
-| **AI/rules separation and defensible calculations** | AI Gateway isolated from deterministic rule engine and financial module; provider adapters make AI calls replaceable and auditable |
-| **Append-only audit logging** | Repository + Command + Outbox patterns ensure every consent, access, review, and decision writes an immutable record |
-| **Privacy, consent, security** | Row-level security, redaction gateway, short-lived blob links, Key Vault secret management |
-| **Fairness and documentation monitoring** | Documentation level stored as a first-class profile attribute; readiness and shortlist outcomes compared in aggregate without exposing individual records |
-| **Configurability, safe scale, multi-partner reuse** | Policy-as-data and organisation-scoped repositories allow a second funder or credit partner to onboard without code changes |
-
----
-
-## 4. What Was Deliberately Excluded
-
-| Excluded option | Reason |
-|---|---|
-| Microservices | Single team, modest traffic, tight timeline—operational overhead outweighs benefit |
-| Kafka / RabbitMQ / event streaming | Volumes do not require it; Postgres-backed or Redis queues suffice for hackathon and pilot |
-| Separate vector database (Pinecone, Weaviate) | pgvector in the existing Postgres meets scale and keeps one data store |
-| CQRS, event sourcing, saga orchestration | No requirement justifies the complexity; Command pattern plus append-only audit achieves the same traceability |
-| Serverless functions for document processing | Cold starts harm the 90-second demo target; local queue + worker is easier to reason about |
-| Dedicated review service | A Postgres table plus reviewer view inside the same app is sufficient |
-| GPU-hosted BGE from day one | CPU-hosted TEI or a hosted embedding API is adequate for MVP; migrate when latency or cost demands |
-
----
-
-## 5. Summary
-
-The platform is built as a **modular monolith with an async worker**, using a small set of patterns—**Adapter, Strategy, Pipeline, Repository, Command, Policy-as-data, lightweight Outbox, Feature Flags, Explainable Recommendation, and Redaction Gateway**—each mapped to a specific functional or non-functional requirement.
-
-This gives the simplest architecture that still satisfies explainability, consent, audit, provider flexibility, and human oversight—and leaves a clean, low-cost path to extract services or swap AI providers only when real usage proves the need.
+- [Next.js Subscription Payments Starter](https://github.com/vercel/nextjs-subscription-payments)
+- [Cookie-based Auth and the Next.js 13 App Router (free course)](https://youtube.com/playlist?list=PL5S4mPUpp4OtMhpnp93EFSo42iQ40XjbF)
+- [Supabase Auth and the Next.js App Router](https://github.com/supabase/supabase/tree/master/examples/auth/nextjs)
