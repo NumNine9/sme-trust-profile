@@ -1,6 +1,7 @@
 # Architecture & Design Patterns
 
 This section describes the architecture and design patterns selected for the SME Verification and Opportunity Matching platform. 
+
 ---
 
 ## 1. Architectural Style: Modular Monolith + Async Worker
