@@ -1,4 +1,4 @@
-````markdown
+
 # Architecture & Design Patterns
 
 This section describes the architecture and design patterns selected for the SME Verification and Opportunity Matching platform. The choices are driven by two constraints: the solution must be demonstrable at hackathon scale and must reach a paid pilot within 6 months, without re-architecture.
@@ -168,4 +168,4 @@ The AI Gateway is a **backend-only module**. No AI provider is ever exposed to t
 The platform is built as a **modular monolith with an async worker**, using a small set of patterns—**Adapter, Strategy, Pipeline, Repository, Command, Policy-as-data, lightweight Outbox, Feature Flags, Explainable Recommendation, and Redaction Gateway**—each mapped to a specific functional or non-functional requirement.
 
 This gives the simplest architecture that still satisfies explainability, consent, audit, provider flexibility, and human oversight—and leaves a clean, low-cost path to extract services or swap AI providers only when real usage proves the need.
-````
+
